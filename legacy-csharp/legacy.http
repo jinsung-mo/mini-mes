@@ -1,0 +1,35 @@
+@base = http://localhost:5080/api
+
+### 작업지시 생성
+POST {{base}}/work-orders
+Content-Type: application/json
+
+{ "plantCd": "KR01", "itemCd": "SEDAN-A", "planQty": 10, "planDate": "2026-10-29" }
+
+### 목록
+GET {{base}}/work-orders?plantCd=KR01
+
+### 릴리즈
+POST {{base}}/work-orders/1/release
+
+### 작업 시작
+POST {{base}}/work-orders/1/start
+
+### 실적 보고 (양품 6, 불량 1)
+POST {{base}}/production-results
+Content-Type: application/json
+
+{ "woId": 1, "procCd": "INSP", "eqpCd": "EQ-INSP-01", "goodQty": 6, "defectQty": 1, "defectCd": "D01",
+  "reportedAt": "2026-10-29T23:30:00+09:00" }
+
+### 실적 보고 (계획 수량 도달 → 자동 완료)
+POST {{base}}/production-results
+Content-Type: application/json
+
+{ "woId": 1, "procCd": "INSP", "eqpCd": "EQ-INSP-01", "goodQty": 4, "defectQty": 0 }
+
+### LOT 목록
+GET {{base}}/work-orders/1/lots
+
+### 실적 이력
+GET {{base}}/work-orders/1/results
