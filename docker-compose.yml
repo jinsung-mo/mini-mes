@@ -26,8 +26,10 @@ services:
     volumes:
       - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./web/html:/usr/share/nginx/html:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # Docker Desktop(Windows/Mac)은 host.docker.internal을 IPv4로 알려준다.
+    # Linux에서는 아래 두 줄을 추가해야 한다. (WAS는 localhost에서만 받으므로 IPv4로 연결되어야 함)
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
 
 volumes:
   pgdata:

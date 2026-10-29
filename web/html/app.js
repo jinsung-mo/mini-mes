@@ -72,7 +72,12 @@ async function api(method, path, body) {
 
   if (res.error) throw new ApiError('NET', res.error);
   const { resultCode, message, data } = res.json ?? {};
-  if (resultCode === undefined) throw new ApiError(`HTTP ${res.http}`, '응답에 resultCode가 없어요. 약속한 응답 형식과 달라요.');
+  if (resultCode === undefined) {
+    const reason = res.http === 404
+      ? '이 WAS에는 아직 없는 API예요.'
+      : '응답에 resultCode가 없어요. 약속한 응답 형식과 달라요.';
+    throw new ApiError(`HTTP ${res.http}`, reason);
+  }
   if (resultCode !== '0000') throw new ApiError(resultCode, message);
   return data;
 }
