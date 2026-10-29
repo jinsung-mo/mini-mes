@@ -37,7 +37,7 @@
 |---|---|
 | [`web/`](web/) | WEB tier: 단말 화면(HTML/JS) + nginx |
 | [`legacy-csharp/`](legacy-csharp/) | WAS tier: 전환 대상 C# 레거시 |
-| `mes-api/` | WAS tier: 전환 결과 Java (2단계) |
+| [`mes-api/`](mes-api/) | WAS tier: 전환 결과 Java (2단계 진행 중) |
 | [`db/`](db/) | DB tier: 스키마, 기초 데이터 |
 
 ## 도메인
@@ -59,7 +59,7 @@
 
 - [x] **1단계: C# 레거시 API** — [설명](docs/01-legacy.md) · [코드](legacy-csharp/)
 - [x] **단말 화면 (WEB tier)** — [설명](web/README.md) · [코드](web/)
-- [ ] 2단계: Spring Boot 전환 (API 계약 유지, WAS 내부 계층 분리)
+- [ ] 2단계: Spring Boot 전환 (API 계약 유지, WAS 내부 계층 분리) — 진행 중: [기준정보 조회 완료](mes-api/README.md#전환-진행-상황)
 - [ ] 3단계: 동등성 검증 (같은 시나리오를 C#/Java 양쪽에 실행해 결과 비교)
 - [ ] 4단계: 설비 TCP 인터페이스 + PLC 시뮬레이터
 - [ ] 5단계: 해외 공장 시간대 처리 (레거시 버그 수정)
@@ -71,6 +71,7 @@
 ```bash
 docker compose up -d                          # PostgreSQL(:55432) + nginx 화면(:3000)
 cd legacy-csharp/LegacyMes && dotnet run      # C# 레거시 WAS(:5080)
+cd mes-api && ./gradlew bootRun               # Java WAS(:8081)
 ```
 
 브라우저에서 http://localhost:3000 을 엽니다. 모듈별 자세한 내용은 각 폴더의 README를 참고하세요.
@@ -79,5 +80,5 @@ cd legacy-csharp/LegacyMes && dotnet run      # C# 레거시 WAS(:5080)
 
 - WEB: nginx / HTML·CSS·JavaScript (빌드 도구 없음)
 - Legacy WAS: C# / .NET 8 / ASP.NET Core / Npgsql
-- Target WAS: Java 17 / Spring Boot 4 / MyBatis
+- Target WAS: Java 17 / Spring Boot 4.0 / MyBatis
 - DB: PostgreSQL 16

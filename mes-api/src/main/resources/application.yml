@@ -1,0 +1,23 @@
+server:
+  port: 8081
+  address: 127.0.0.1
+
+spring:
+  application:
+    name: mes-api
+  datasource:
+    url: jdbc:postgresql://localhost:55432/mes
+    username: mes
+    password: mes
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    # plant_cd 컬럼을 plantCd 필드(레코드 생성자 인자)에 연결한다
+    map-underscore-to-camel-case: true
+    arg-name-based-constructor-auto-mapping: true
+
+logging:
+  level:
+    # MyBatis가 실행하는 SQL과 파라미터를 로그로 보여준다
+    com.minimes: debug

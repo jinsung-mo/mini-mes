@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 레거시 MesController의 기준정보 조회 SQL을 그대로 옮겼다. @plant 같은 파라미터만 #{plantCd}로 바뀐다. -->
+<mapper namespace="com.minimes.master.MasterMapper">
+
+	<select id="findPlants" resultType="com.minimes.master.Plant">
+		SELECT plant_cd, plant_nm, time_zone FROM plant ORDER BY plant_cd
+	</select>
+
+	<select id="findItems" resultType="com.minimes.master.Item">
+		SELECT item_cd, item_nm FROM item WHERE plant_cd = #{plantCd} ORDER BY item_cd
+	</select>
+
+	<select id="findRoutings" resultType="com.minimes.master.Routing">
+		SELECT r.seq, r.proc_cd, p.proc_nm
+		  FROM routing r
+		  JOIN process p ON p.plant_cd = r.plant_cd AND p.proc_cd = r.proc_cd
+		 WHERE r.plant_cd = #{plantCd} AND r.item_cd = #{itemCd}
+		 ORDER BY r.seq
+	</select>
+
+	<select id="findEquipments" resultType="com.minimes.master.Equipment">
+		SELECT eqp_cd, eqp_nm, proc_cd FROM equipment WHERE plant_cd = #{plantCd} ORDER BY eqp_cd
+	</select>
+
+	<select id="findDefectCodes" resultType="com.minimes.master.DefectCode">
+		SELECT defect_cd, defect_nm FROM defect_code ORDER BY defect_cd
+	</select>
+
+</mapper>
