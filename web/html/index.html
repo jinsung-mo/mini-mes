@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mini MES</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Mini MES <small>단말 화면</small></div>
+    <label class="plant-picker">공장
+      <select id="plant-select"></select>
+    </label>
+    <div class="clock" id="plant-clock" title="선택한 공장의 현지 시각"></div>
+    <div class="backend-switch" aria-label="요청을 보낼 WAS">
+      <span class="switch-label">WAS</span>
+      <button type="button" class="backend-btn" data-backend="legacy">
+        <span class="dot" data-health="legacy"></span>C# 레거시 <small>:5080</small>
+      </button>
+      <button type="button" class="backend-btn" data-backend="java">
+        <span class="dot" data-health="java"></span>Java <small>:8081</small>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>작업지시</h2>
+        <button type="button" class="btn ghost small" id="refresh-btn">새로고침</button>
+      </div>
+
+      <form id="create-form" class="create-form">
+        <label>품목 <select name="itemCd" id="item-select"></select></label>
+        <label>계획 수량 <input name="planQty" type="number" value="10"></label>
+        <label>계획일 <input name="planDate" type="date" id="plan-date"></label>
+        <button class="btn primary">생성</button>
+      </form>
+
+      <div class="filters" id="status-filters">
+        <button type="button" class="chip active" data-status="">전체</button>
+        <button type="button" class="chip" data-status="CREATED">생성</button>
+        <button type="button" class="chip" data-status="RELEASED">지시</button>
+        <button type="button" class="chip" data-status="IN_PROGRESS">작업중</button>
+        <button type="button" class="chip" data-status="COMPLETED">완료</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr><th>작업지시 번호</th><th>품목</th><th>진척</th><th class="num">불량</th><th>상태</th></tr>
+          </thead>
+          <tbody id="wo-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div id="detail-empty" class="empty">왼쪽 목록에서 작업지시를 선택하세요.</div>
+      <div id="detail" hidden></div>
+    </section>
+  </main>
+
+  <section class="panel log-panel">
+    <div class="panel-head">
+      <h2>API 로그</h2>
+      <span class="hint">화면과 WAS가 주고받은 요청·응답이에요. 행을 누르면 내용을 볼 수 있고, 조회(GET)는 C#과 Java 응답을 비교할 수 있어요.</span>
+      <button type="button" class="btn ghost small" id="clear-log">지우기</button>
+    </div>
+    <ol id="log-list" class="log-list"></ol>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

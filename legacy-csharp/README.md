@@ -11,7 +11,7 @@ cd legacy-csharp/LegacyMes
 dotnet run                           # http://localhost:5080
 ```
 
-요청 예시는 [`legacy.http`](legacy.http)에 있습니다.
+요청 예시는 [`legacy.http`](legacy.http)에 있습니다. 화면으로 쓰려면 http://localhost:3000 을 엽니다 ([`web/`](../web/README.md)).
 
 ## API
 
@@ -26,6 +26,11 @@ dotnet run                           # http://localhost:5080
 | POST | `/api/production-results` | 생산실적 보고 (LOT 발행, 근무조 계산, 계획 수량 도달 시 자동 완료) |
 | GET | `/api/work-orders/{id}/lots` | 발행된 LOT 목록 |
 | GET | `/api/work-orders/{id}/results` | 실적 이력 |
+| GET | `/api/plants` | 공장 목록 (시간대 포함) |
+| GET | `/api/items?plantCd=KR01` | 품목 |
+| GET | `/api/routings?plantCd=KR01&itemCd=SEDAN-A` | 품목별 공정 순서 |
+| GET | `/api/equipments?plantCd=KR01` | 설비 |
+| GET | `/api/defect-codes` | 불량 코드 |
 
 ### 응답 계약 (전환 후에도 유지해야 함)
 

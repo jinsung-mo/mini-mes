@@ -312,6 +312,86 @@ public class MesController : ControllerBase
         });
     }
 
+    // ---- 기준정보 조회 (단말 화면의 콤보박스용) ----
+
+    // GET api/plants
+    [HttpGet("plants")]
+    public IActionResult GetPlants()
+    {
+        return Run(() =>
+        {
+            using var conn = Open();
+            using var cmd = new NpgsqlCommand("SELECT plant_cd, plant_nm, time_zone FROM plant ORDER BY plant_cd", conn);
+            return Success(ReadAll(cmd));
+        });
+    }
+
+    // GET api/items?plantCd=KR01
+    [HttpGet("items")]
+    public IActionResult GetItems(string? plantCd)
+    {
+        return Run(() =>
+        {
+            if (string.IsNullOrEmpty(plantCd)) return Fail("E001", "plantCd is required");
+
+            using var conn = Open();
+            using var cmd = new NpgsqlCommand(
+                "SELECT item_cd, item_nm FROM item WHERE plant_cd = @plant ORDER BY item_cd", conn);
+            cmd.Parameters.AddWithValue("plant", plantCd);
+            return Success(ReadAll(cmd));
+        });
+    }
+
+    // GET api/routings?plantCd=KR01&itemCd=SEDAN-A
+    [HttpGet("routings")]
+    public IActionResult GetRoutings(string? plantCd, string? itemCd)
+    {
+        return Run(() =>
+        {
+            if (string.IsNullOrEmpty(plantCd) || string.IsNullOrEmpty(itemCd))
+                return Fail("E001", "plantCd and itemCd are required");
+
+            using var conn = Open();
+            using var cmd = new NpgsqlCommand(@"
+                SELECT r.seq, r.proc_cd, p.proc_nm
+                  FROM routing r
+                  JOIN process p ON p.plant_cd = r.plant_cd AND p.proc_cd = r.proc_cd
+                 WHERE r.plant_cd = @plant AND r.item_cd = @item
+                 ORDER BY r.seq", conn);
+            cmd.Parameters.AddWithValue("plant", plantCd);
+            cmd.Parameters.AddWithValue("item", itemCd);
+            return Success(ReadAll(cmd));
+        });
+    }
+
+    // GET api/equipments?plantCd=KR01
+    [HttpGet("equipments")]
+    public IActionResult GetEquipments(string? plantCd)
+    {
+        return Run(() =>
+        {
+            if (string.IsNullOrEmpty(plantCd)) return Fail("E001", "plantCd is required");
+
+            using var conn = Open();
+            using var cmd = new NpgsqlCommand(
+                "SELECT eqp_cd, eqp_nm, proc_cd FROM equipment WHERE plant_cd = @plant ORDER BY eqp_cd", conn);
+            cmd.Parameters.AddWithValue("plant", plantCd);
+            return Success(ReadAll(cmd));
+        });
+    }
+
+    // GET api/defect-codes
+    [HttpGet("defect-codes")]
+    public IActionResult GetDefectCodes()
+    {
+        return Run(() =>
+        {
+            using var conn = Open();
+            using var cmd = new NpgsqlCommand("SELECT defect_cd, defect_nm FROM defect_code ORDER BY defect_cd", conn);
+            return Success(ReadAll(cmd));
+        });
+    }
+
     private IActionResult ChangeStatus(long id, string from, string to, string? timeColumn)
     {
         using var conn = Open();
