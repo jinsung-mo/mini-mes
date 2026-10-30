@@ -21,4 +21,6 @@ public interface MasterMapper {
 
 	List<DefectCode> findDefectCodes();
 
+	int countItem(@Param("plantCd") String plantCd, @Param("itemCd") String itemCd);
+
 }

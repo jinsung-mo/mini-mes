@@ -29,15 +29,19 @@ IntelliJ에서는 `mes-api` 폴더를 Gradle 프로젝트로 열고 `MesApiAppli
 
 ```
 com.minimes
-├─ common/   ApiResponse(응답 형식), ErrorCode, BusinessException, GlobalExceptionHandler
-└─ master/   기준정보 조회
-   ├─ MasterController   Presentation: HTTP 요청 ↔ 자바 객체
-   ├─ MasterService      Business: 입력 검증, 업무 규칙
-   ├─ MasterMapper       Data Access: SQL 호출 (SQL은 resources/mapper/MasterMapper.xml)
-   └─ Plant, Item, ...   응답 DTO (record, JSON 키는 snake_case)
+├─ common/       ApiResponse(응답 형식), ErrorCode, BusinessException, GlobalExceptionHandler
+├─ master/       기준정보 조회
+│  ├─ MasterController   Presentation: HTTP 요청 ↔ 자바 객체
+│  ├─ MasterService      Business: 입력 검증, 업무 규칙
+│  ├─ MasterMapper       Data Access: SQL 호출 (SQL은 resources/mapper/MasterMapper.xml)
+│  └─ Plant, Item, ...   응답 DTO (record, JSON 키는 snake_case)
+├─ workorder/    작업지시: 목록·상세·생성·상태 전이
+│  └─ WorkOrderStatus    상태와 전이 규칙(CREATED → RELEASED → IN_PROGRESS → COMPLETED)
+└─ production/   LOT·생산실적 (주소는 /api/work-orders/{id}/lots 지만 다루는 데이터 기준으로 분리)
 ```
 
 기능(master, workorder, production)별로 패키지를 나눠 두면, 나중에 MSA로 서비스를 쪼갤 때 이 경계를 그대로 쓸 수 있습니다.
+그래서 작업지시가 품목 존재를 확인할 때도 품목 테이블을 직접 보지 않고 `MasterService`에 묻습니다.
 
 ### 요청 하나의 흐름
 
@@ -51,8 +55,23 @@ GET /api/items?plantCd=KR01
 
 검증에 걸리면 `GlobalExceptionHandler`가 `{"resultCode":"E001","message":"plantCd is required","data":null}`로 바꿉니다. HTTP 상태는 레거시처럼 200입니다.
 
+## 레거시(ASP.NET)와 동작을 맞춘 부분
+
+같은 요청을 양쪽에 보내 비교하다가 찾은 차이와, 맞춘 방법입니다.
+
+| 요청 | ASP.NET (레거시) | Spring 기본 | 맞춘 방법 |
+|---|---|---|---|
+| `planQty` 키가 없음 | 0으로 받음 → E002 | record로 받으면 400 | 요청 DTO를 record 대신 **기본 생성자 + setter 클래스**로 (`CreateWorkOrderRequest`) |
+| 키가 `"PlantCd"`(대소문자 다름) | 받음 | 무시 | `spring.jackson.mapper.accept-case-insensitive-properties: true` |
+| `planQty: 10.5` | 400 | 10으로 잘라서 받음 | `spring.jackson.deserialization.accept-float-as-int: false` |
+| 없는 주소 | 404 | 404 | `GlobalExceptionHandler`가 `ResponseEntityExceptionHandler`를 상속해 E999로 바뀌지 않게 |
+| `?status=FOO` | 빈 목록 | enum으로 받으면 400 | 조회 조건은 문자열로 받음 |
+
+응답 DTO는 값을 만들어 내보내기만 하므로 record를 그대로 씁니다.
+
 ## 전환 진행 상황
 
 - [x] 기준정보 조회: plants, items, routings, equipments, defect-codes
-- [ ] 작업지시: 목록, 상세, 생성, 상태 전이
-- [ ] 실적 보고: LOT 발행, 근무조 계산, 자동 완료, LOT·실적 조회
+- [x] 작업지시: 목록, 상세, 생성, 상태 전이
+- [x] LOT·실적 조회 (화면의 상세 영역이 작업지시와 함께 불러오므로 먼저 옮김)
+- [ ] 실적 보고: LOT 발행, 근무조 계산, 자동 완료

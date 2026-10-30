@@ -9,6 +9,12 @@ spring:
     url: jdbc:postgresql://localhost:55432/mes
     username: mes
     password: mes
+  # 요청 JSON을 읽는 방식을 레거시(ASP.NET)에 맞춘다
+  jackson:
+    mapper:
+      accept-case-insensitive-properties: true   # "PlantCd"도 plantCd로 읽는다
+    deserialization:
+      accept-float-as-int: false                 # 10.5를 int로 잘라 받지 않고 400으로 거절한다
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml

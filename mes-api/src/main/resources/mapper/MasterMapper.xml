@@ -28,4 +28,8 @@
 		SELECT defect_cd, defect_nm FROM defect_code ORDER BY defect_cd
 	</select>
 
+	<select id="countItem" resultType="int">
+		SELECT COUNT(*) FROM item WHERE plant_cd = #{plantCd} AND item_cd = #{itemCd}
+	</select>
+
 </mapper>

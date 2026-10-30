@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.minimes.workorder.WorkOrderMapper">
+
+	<!-- 레거시 MesController.WoColumns와 같다. 조회 시각을 Asia/Seoul로 고정하는 것도 그대로 옮겼다 (레거시 문제점 3) -->
+	<sql id="woColumns">
+		wo_id, plant_cd, wo_no, item_cd, plan_qty, good_qty, defect_qty, status,
+		to_char(plan_date, 'YYYY-MM-DD') AS plan_date,
+		to_char(started_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD HH24:MI:SS') AS started_at,
+		to_char(completed_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD HH24:MI:SS') AS completed_at
+	</sql>
+
+	<!-- 레거시는 문자열을 이어 붙여 조건을 붙였다. MyBatis는 <if>로 같은 일을 한다 -->
+	<select id="findByPlant" resultType="com.minimes.workorder.WorkOrder">
+		SELECT <include refid="woColumns"/>
+		  FROM work_order
+		 WHERE plant_cd = #{plantCd}
+		<if test="status != null and status != ''">
+		   AND status = #{status}
+		</if>
+		 ORDER BY wo_id
+	</select>
+
+	<select id="findById" resultType="com.minimes.workorder.WorkOrder">
+		SELECT <include refid="woColumns"/> FROM work_order WHERE wo_id = #{woId}
+	</select>
+
+	<select id="findStatus" resultType="com.minimes.workorder.WorkOrderStatus">
+		SELECT status FROM work_order WHERE wo_id = #{woId}
+	</select>
+
+	<!-- 레거시와 같은 MAX + 1 채번. 동시 요청이 오면 번호가 겹칠 수 있다 (레거시 문제점 4) -->
+	<select id="nextWoSeq" resultType="int">
+		SELECT COALESCE(MAX(CAST(RIGHT(wo_no, 3) AS INT)), 0) + 1 FROM work_order WHERE wo_no LIKE #{prefix} || '%'
+	</select>
+
+	<!--
+		RETURNING으로 생성된 wo_id를 바로 받으려고 select로 실행한다. 레거시의 ExecuteScalar와 같은 방식이다.
+		select는 결과를 캐시할 수 있어서, 같은 값으로 두 번 실행해도 매번 INSERT 되도록 flushCache를 켠다.
+	-->
+	<select id="insert" resultType="long" flushCache="true">
+		INSERT INTO work_order (plant_cd, wo_no, item_cd, plan_qty, status, plan_date)
+		VALUES (#{plantCd}, #{woNo}, #{itemCd}, #{planQty}, 'CREATED', #{planDate})
+		RETURNING wo_id
+	</select>
+
+	<!-- 시작·완료할 때만 해당 시각 컬럼을 함께 바꾼다. 레거시 ChangeStatus의 timeColumn과 같다 -->
+	<update id="updateStatus">
+		UPDATE work_order
+		   SET status = #{status}, updated_at = now()
+		<if test="status.name() == 'IN_PROGRESS'">, started_at = now()</if>
+		<if test="status.name() == 'COMPLETED'">, completed_at = now()</if>
+		 WHERE wo_id = #{woId}
+	</update>
+
+</mapper>

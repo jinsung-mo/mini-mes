@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.minimes.production.ProductionMapper">
+
+	<select id="findLots" resultType="com.minimes.production.Lot">
+		SELECT lot_no, item_cd, qty,
+		       to_char(created_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD HH24:MI:SS') AS created_at
+		  FROM lot WHERE wo_id = #{woId} ORDER BY lot_no
+	</select>
+
+	<select id="findResults" resultType="com.minimes.production.ProductionResult">
+		SELECT result_id, proc_cd, eqp_cd, lot_no, good_qty, defect_qty, defect_cd,
+		       to_char(work_date, 'YYYY-MM-DD') AS work_date, shift_cd,
+		       to_char(reported_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD HH24:MI:SS') AS reported_at
+		  FROM production_result WHERE wo_id = #{woId} ORDER BY result_id
+	</select>
+
+</mapper>

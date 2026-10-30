@@ -59,7 +59,7 @@
 
 - [x] **1단계: C# 레거시 API** — [설명](docs/01-legacy.md) · [코드](legacy-csharp/)
 - [x] **단말 화면 (WEB tier)** — [설명](web/README.md) · [코드](web/)
-- [ ] 2단계: Spring Boot 전환 (API 계약 유지, WAS 내부 계층 분리) — 진행 중: [기준정보 조회 완료](mes-api/README.md#전환-진행-상황)
+- [ ] 2단계: Spring Boot 전환 (API 계약 유지, WAS 내부 계층 분리) — 진행 중: [기준정보·작업지시 완료, 실적 보고 남음](mes-api/README.md#전환-진행-상황)
 - [ ] 3단계: 동등성 검증 (같은 시나리오를 C#/Java 양쪽에 실행해 결과 비교)
 - [ ] 4단계: 설비 TCP 인터페이스 + PLC 시뮬레이터
 - [ ] 5단계: 해외 공장 시간대 처리 (레거시 버그 수정)

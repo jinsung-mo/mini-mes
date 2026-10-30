@@ -50,4 +50,9 @@ public class MasterService {
 		return masterMapper.findDefectCodes();
 	}
 
+	/** 다른 기능(작업지시 등)은 기준정보 테이블을 직접 보지 않고 이 서비스에 묻는다 */
+	public boolean existsItem(String plantCd, String itemCd) {
+		return masterMapper.countItem(plantCd, itemCd) > 0;
+	}
+
 }
