@@ -23,13 +23,14 @@ IntelliJ에서는 `mes-api` 폴더를 Gradle 프로젝트로 열고 `MesApiAppli
 | Jackson | 3 (Spring Boot 4 기본) | 패키지가 `com.fasterxml.jackson`에서 `tools.jackson`으로 바뀜 |
 
 포트는 8081입니다. 이 PC의 8080은 다른 컨테이너가 쓰고 있습니다.
-레거시처럼 `127.0.0.1`에서만 요청을 받아서 같은 네트워크의 다른 PC에서는 접근할 수 없습니다.
+레거시처럼 루프백(`127.0.0.1`, `::1`)에서만 요청을 받아서 같은 네트워크의 다른 PC에서는 접근할 수 없습니다.
+`server.address`는 주소를 하나만 받기 때문에 `::1`은 `LoopbackConfig`가 따로 엽니다 ([트러블 슈팅 4](../docs/troubleshooting.md#4-localhost-요청만-2초씩-지연)).
 
 ## 구조: 기능별 패키지 + 계층
 
 ```
 com.minimes
-├─ common/       ApiResponse(응답 형식), ErrorCode, BusinessException, GlobalExceptionHandler
+├─ common/       ApiResponse(응답 형식), ErrorCode, BusinessException, GlobalExceptionHandler, LoopbackConfig
 ├─ master/       기준정보 조회
 │  ├─ MasterController   Presentation: HTTP 요청 ↔ 자바 객체
 │  ├─ MasterService      Business: 입력 검증, 업무 규칙
@@ -38,7 +39,39 @@ com.minimes
 ├─ workorder/    작업지시: 목록·상세·생성·상태 전이
 │  └─ WorkOrderStatus    상태와 전이 규칙(CREATED → RELEASED → IN_PROGRESS → COMPLETED)
 └─ production/   LOT·생산실적 (주소는 /api/work-orders/{id}/lots 지만 다루는 데이터 기준으로 분리)
+   ├─ ProductionService.report   실적 보고. 하나의 트랜잭션(@Transactional)
+   ├─ WorkShift                  근무조·근무일자 계산 (DB 없이 테스트)
+   └─ ReportedAtParser           보고 시각 해석 (레거시 DateTime.TryParse와 같은 규칙)
 ```
+
+### 실적 보고: 기능 경계를 넘는 요청
+
+`POST /api/production-results`는 세 기능에 걸쳐 있습니다. 이때도 다른 기능의 테이블을 직접 보지 않습니다.
+
+```
+ProductionService.report  (@Transactional: 아래 전부가 한 트랜잭션)
+ ├─ WorkOrderService.getWorkOrderForUpdate   작업지시 행 잠금, 존재(E004), 진행 중인지(E006)
+ ├─ MasterService.existsEquipment            설비(E009)
+ ├─ MasterService.existsDefectCode           불량 코드(E007, E008)
+ ├─ WorkShift.of(보고 시각)                   근무조·근무일자
+ ├─ ProductionMapper.nextLotSeq              LOT 채번 (공장·근무일자 채번 행 잠금)
+ ├─ ProductionMapper                         LOT 저장, 실적 저장
+ └─ WorkOrderService.applyResult             수량 누적, 계획 수량 도달 시 자동 완료
+```
+
+잠금 순서는 항상 작업지시 행 → 채번 행입니다. 모든 보고가 같은 순서로 잠그므로 교착이 생기지 않습니다.
+
+레거시와 다르게 고친 것 (동시 실적 보고를 재현해서 찾음, [트러블 슈팅](../docs/troubleshooting.md)):
+
+- LOT 번호를 `MAX + 1` 대신 채번 테이블(`lot_seq`)과 행 잠금으로 땁니다 (1번)
+- 실적 보고는 작업지시 행을 잠그고 시작해서, 완료된 작업지시에는 반영되지 않습니다 (2번)
+- 처리 중 예외(E999)는 예외 메시지 대신 참조 번호만 응답하고, 상세는 서버 로그에 남깁니다 (3번)
+
+레거시 동작을 그대로 옮긴 부분이라 아직 고치지 않은 것:
+
+- 근무조를 **서버 시간대**로 계산합니다 (레거시 문제점 2 → 5단계에서 `plant.time_zone`으로)
+- 작업지시 번호는 아직 `MAX + 1`로 채번합니다 (레거시 문제점 4)
+- 보고 시각은 단말 화면이 보내는 ISO 형식(`2026-10-29T08:00:00-05:00`, 오프셋·초 생략, 날짜와 시각 사이 공백)만 받습니다. C# `TryParse`가 받는 `2026/10/29 8:00` 같은 형식은 E001이 됩니다
 
 기능(master, workorder, production)별로 패키지를 나눠 두면, 나중에 MSA로 서비스를 쪼갤 때 이 경계를 그대로 쓸 수 있습니다.
 그래서 작업지시가 품목 존재를 확인할 때도 품목 테이블을 직접 보지 않고 `MasterService`에 묻습니다.
@@ -74,4 +107,4 @@ GET /api/items?plantCd=KR01
 - [x] 기준정보 조회: plants, items, routings, equipments, defect-codes
 - [x] 작업지시: 목록, 상세, 생성, 상태 전이
 - [x] LOT·실적 조회 (화면의 상세 영역이 작업지시와 함께 불러오므로 먼저 옮김)
-- [ ] 실적 보고: LOT 발행, 근무조 계산, 자동 완료
+- [x] 실적 보고: LOT 발행, 근무조 계산, 자동 완료 (C#과 같은 요청 33건의 응답·DB 반영 결과가 같음)

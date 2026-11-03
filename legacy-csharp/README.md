@@ -64,9 +64,9 @@ dotnet run                           # http://localhost:5080
 | 1 | 컨트롤러 하나에 SQL, 검증, 비즈니스 로직이 모두 있음 (Fat Controller) | `MesController` | Controller / Service / Repository 3-tier로 분리 |
 | 2 | 근무조·근무일자를 **서버 로컬 시간**으로 계산함 | `ReportResult` | 공장 `time_zone` 기준으로 계산. **동작이 바뀌는 수정**이므로 따로 기록 |
 | 3 | 조회 시각을 `Asia/Seoul`로 고정해서 포맷함 | `WoColumns` 등 | 공장 시간대 기준으로 변경 여부 결정 (응답 계약 변경 이슈) |
-| 4 | 작업지시·LOT 번호를 `MAX + 1`로 채번함. 동시 요청 시 중복 키 오류 가능 | `CreateWorkOrder`, `ReportResult` | 채번 테이블 + 행 잠금, 또는 시퀀스 |
+| 4 | 작업지시·LOT 번호를 `MAX + 1`로 채번함. 동시 요청 시 중복 키 오류 가능 | `CreateWorkOrder`, `ReportResult` | 채번 테이블 + 행 잠금, 또는 시퀀스. LOT 번호는 Java에서 수정 ([트러블 슈팅 1](../docs/troubleshooting.md#1-동시-보고-시-lot-번호-중복)) |
 | 5 | 상태값이 문자열 리터럴로 흩어져 있음 | 전체 | enum + 상태 전이 규칙을 한곳에 |
-| 6 | 모든 예외를 `E999` + 예외 메시지로 응답 (내부 정보 노출) | `Run` | 공통 예외 처리기에서 처리, 메시지 정제 |
+| 6 | 모든 예외를 `E999` + 예외 메시지로 응답 (내부 정보 노출) | `Run` | 공통 예외 처리기에서 처리, 메시지 정제. Java에서 수정 ([트러블 슈팅 3](../docs/troubleshooting.md#3-오류-응답에-서버-경로와-sql-노출)) |
 
 ### 2번 문제 재현
 
