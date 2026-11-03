@@ -7,6 +7,8 @@ import java.time.format.ResolverStyle;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.minimes.common.BusinessException;
@@ -84,9 +86,26 @@ public class WorkOrderService {
 	}
 
 	/**
-	 * 생산실적을 작업지시에 반영한다. 누적 양품이 계획 수량에 닿으면 자동 완료한다.
-	 * 실적 저장과 같은 트랜잭션 안에서 불려야 한다 (ProductionService.report).
+	 * 작업지시를 잠그고 읽는다. 읽은 상태로 판단해서 작업지시를 바꾸는 트랜잭션(실적 보고)에서 쓴다.
+	 * <p>
+	 * 잠그지 않으면 동시에 들어온 보고들이 모두 "진행 중"을 읽고 통과해서, 자동 완료된 뒤에도 실적이 더 반영된다
+	 * (트러블 슈팅 2: 계획 10에 양품 19). 트랜잭션 밖에서 부르면 잠금이 곧바로 풀려 의미가 없으므로 MANDATORY로
+	 * 트랜잭션 안에서만 부를 수 있게 막는다.
 	 */
+	@Transactional(propagation = Propagation.MANDATORY)
+	public WorkOrder getWorkOrderForUpdate(long woId) {
+		WorkOrder workOrder = workOrderMapper.findByIdForUpdate(woId);
+		if (workOrder == null) {
+			throw new BusinessException(ErrorCode.E004, "work order not found");
+		}
+		return workOrder;
+	}
+
+	/**
+	 * 생산실적을 작업지시에 반영한다. 누적 양품이 계획 수량에 닿으면 자동 완료한다.
+	 * 실적 저장과 같은 트랜잭션 안에서, {@link #getWorkOrderForUpdate}로 잠근 작업지시로 불러야 한다.
+	 */
+	@Transactional(propagation = Propagation.MANDATORY)
 	public WorkOrderProgress applyResult(WorkOrder workOrder, int goodQty, int defectQty) {
 		int totalGood = workOrderMapper.addResultQty(workOrder.woId(), goodQty, defectQty);
 		if (totalGood >= workOrder.planQty()) {

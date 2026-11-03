@@ -26,6 +26,15 @@
 		SELECT <include refid="woColumns"/> FROM work_order WHERE wo_id = #{woId}
 	</select>
 
+	<!--
+		실적 보고처럼 작업지시를 읽고 그 값으로 판단해서 바꾸는 트랜잭션용 (트러블 슈팅 2).
+		FOR UPDATE로 행을 잠가서, 같은 작업지시에 대한 다른 보고는 이 트랜잭션이 커밋할 때까지 여기서 기다린다.
+		그래서 다음 보고는 항상 커밋된 최신 상태(완료 여부, 누적 수량)를 보고 판단한다.
+	-->
+	<select id="findByIdForUpdate" resultType="com.minimes.workorder.WorkOrder">
+		SELECT <include refid="woColumns"/> FROM work_order WHERE wo_id = #{woId} FOR UPDATE
+	</select>
+
 	<select id="findStatus" resultType="com.minimes.workorder.WorkOrderStatus">
 		SELECT status FROM work_order WHERE wo_id = #{woId}
 	</select>

@@ -13,6 +13,9 @@ public interface WorkOrderMapper {
 
 	WorkOrder findById(long woId);
 
+	/** 행을 잠그고 읽는다 (SELECT ... FOR UPDATE). 잠금은 호출한 트랜잭션이 끝날 때 풀린다 */
+	WorkOrder findByIdForUpdate(long woId);
+
 	WorkOrderStatus findStatus(long woId);
 
 	int nextWoSeq(String prefix);

@@ -52,6 +52,13 @@ public class ProductionService {
 	 * 필수값(E001) → 수량(E002) → 보고 시각(E001) → 작업지시(E004, E006) → 설비(E009) → 불량 코드(E007, E008)
 	 * <p>
 	 * LOT 저장, 실적 저장, 작업지시 수량 누적, 자동 완료가 하나의 트랜잭션이다. 중간에 예외가 나면 모두 롤백된다.
+	 * <p>
+	 * 동시에 들어온 보고를 위해 잠금을 두 번 건다. 순서는 항상 작업지시 행 → 채번 행이다.
+	 * 모든 보고가 같은 순서로 잠그므로 서로 상대의 잠금을 기다리는 교착(deadlock)이 생기지 않는다.
+	 * <ol>
+	 * <li>작업지시 행: 같은 작업지시의 보고가 한 줄로 선다. 완료된 뒤의 보고는 E006 (트러블 슈팅 2)</li>
+	 * <li>채번 행(공장·근무일자): 같은 날 같은 공장의 LOT 채번이 한 줄로 선다 (트러블 슈팅 1)</li>
+	 * </ol>
 	 */
 	@Transactional
 	public ReportedResult report(ReportResultRequest request) {
@@ -66,7 +73,7 @@ public class ProductionService {
 		}
 		LocalDateTime reportedAt = resolveReportedAt(request.getReportedAt());
 
-		WorkOrder workOrder = workOrderService.getWorkOrder(request.getWoId());
+		WorkOrder workOrder = workOrderService.getWorkOrderForUpdate(request.getWoId());
 		if (workOrder.status() != WorkOrderStatus.IN_PROGRESS) {
 			throw new BusinessException(ErrorCode.E006, "work order is not in progress");
 		}
