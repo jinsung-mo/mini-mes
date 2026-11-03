@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,6 +32,12 @@ public class ProductionController {
 	@GetMapping("/work-orders/{id}/results")
 	public ApiResponse<List<ProductionResult>> getResults(@PathVariable long id) {
 		return ApiResponse.ok(productionService.getResults(id));
+	}
+
+	/** 단말·설비에서 실적 보고 */
+	@PostMapping("/production-results")
+	public ApiResponse<ReportedResult> report(@RequestBody ReportResultRequest request) {
+		return ApiResponse.ok(productionService.report(request));
 	}
 
 }

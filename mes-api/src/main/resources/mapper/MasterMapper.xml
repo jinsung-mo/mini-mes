@@ -32,4 +32,12 @@
 		SELECT COUNT(*) FROM item WHERE plant_cd = #{plantCd} AND item_cd = #{itemCd}
 	</select>
 
+	<select id="countEquipment" resultType="int">
+		SELECT COUNT(*) FROM equipment WHERE plant_cd = #{plantCd} AND eqp_cd = #{eqpCd} AND proc_cd = #{procCd}
+	</select>
+
+	<select id="countDefectCode" resultType="int">
+		SELECT COUNT(*) FROM defect_code WHERE defect_cd = #{defectCd}
+	</select>
+
 </mapper>

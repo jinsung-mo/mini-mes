@@ -83,6 +83,19 @@ public class WorkOrderService {
 		return changeStatus(woId, WorkOrderStatus.COMPLETED);
 	}
 
+	/**
+	 * 생산실적을 작업지시에 반영한다. 누적 양품이 계획 수량에 닿으면 자동 완료한다.
+	 * 실적 저장과 같은 트랜잭션 안에서 불려야 한다 (ProductionService.report).
+	 */
+	public WorkOrderProgress applyResult(WorkOrder workOrder, int goodQty, int defectQty) {
+		int totalGood = workOrderMapper.addResultQty(workOrder.woId(), goodQty, defectQty);
+		if (totalGood >= workOrder.planQty()) {
+			workOrderMapper.updateStatus(workOrder.woId(), WorkOrderStatus.COMPLETED);
+			return new WorkOrderProgress(totalGood, WorkOrderStatus.COMPLETED);
+		}
+		return new WorkOrderProgress(totalGood, workOrder.status());
+	}
+
 	private WorkOrder changeStatus(long woId, WorkOrderStatus next) {
 		WorkOrderStatus current = workOrderMapper.findStatus(woId);
 		if (current == null) {

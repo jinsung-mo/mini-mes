@@ -55,4 +55,13 @@ public class MasterService {
 		return masterMapper.countItem(plantCd, itemCd) > 0;
 	}
 
+	/** 그 공장의 그 공정에 속한 설비인지 */
+	public boolean existsEquipment(String plantCd, String procCd, String eqpCd) {
+		return masterMapper.countEquipment(plantCd, procCd, eqpCd) > 0;
+	}
+
+	public boolean existsDefectCode(String defectCd) {
+		return masterMapper.countDefectCode(defectCd) > 0;
+	}
+
 }

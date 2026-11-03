@@ -16,4 +16,26 @@
 		  FROM production_result WHERE wo_id = #{woId} ORDER BY result_id
 	</select>
 
+	<!-- 레거시와 같은 MAX + 1 채번. 동시 보고가 오면 같은 번호가 나와 늦은 쪽이 중복 키로 실패한다 (레거시 문제점 4) -->
+	<select id="nextLotSeq" resultType="int">
+		SELECT COALESCE(MAX(CAST(RIGHT(lot_no, 4) AS INT)), 0) + 1 FROM lot WHERE lot_no LIKE #{prefix} || '%'
+	</select>
+
+	<insert id="insertLot">
+		INSERT INTO lot (lot_no, plant_cd, wo_id, item_cd, qty)
+		VALUES (#{lotNo}, #{plantCd}, #{woId}, #{itemCd}, #{qty})
+	</insert>
+
+	<!--
+		lot_no(양품 0)와 defect_cd(불량 없음)는 null일 수 있어서 jdbcType을 적는다.
+		reported_at은 OffsetDateTime으로 넘겨서 timestamptz에 시점 그대로 들어가게 한다.
+	-->
+	<select id="insertResult" resultType="long" flushCache="true">
+		INSERT INTO production_result
+		    (plant_cd, wo_id, proc_cd, eqp_cd, lot_no, good_qty, defect_qty, defect_cd, work_date, shift_cd, reported_at)
+		VALUES (#{plantCd}, #{woId}, #{procCd}, #{eqpCd}, #{lotNo,jdbcType=VARCHAR}, #{goodQty}, #{defectQty},
+		        #{defectCd,jdbcType=VARCHAR}, #{workDate}, #{shiftCd}, #{reportedAt})
+		RETURNING result_id
+	</select>
+
 </mapper>

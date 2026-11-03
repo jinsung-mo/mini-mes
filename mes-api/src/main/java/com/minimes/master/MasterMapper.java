@@ -23,4 +23,9 @@ public interface MasterMapper {
 
 	int countItem(@Param("plantCd") String plantCd, @Param("itemCd") String itemCd);
 
+	int countEquipment(@Param("plantCd") String plantCd, @Param("procCd") String procCd,
+			@Param("eqpCd") String eqpCd);
+
+	int countDefectCode(String defectCd);
+
 }

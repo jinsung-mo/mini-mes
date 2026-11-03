@@ -54,4 +54,15 @@
 		 WHERE wo_id = #{woId}
 	</update>
 
+	<!--
+		더하기를 SQL 안에서 한다(good_qty = good_qty + ?). 읽어서 더한 값을 쓰면 동시에 들어온 실적 하나가 사라질 수 있다.
+		insert와 같은 이유로 select + flushCache로 실행한다.
+	-->
+	<select id="addResultQty" resultType="int" flushCache="true">
+		UPDATE work_order
+		   SET good_qty = good_qty + #{goodQty}, defect_qty = defect_qty + #{defectQty}, updated_at = now()
+		 WHERE wo_id = #{woId}
+		RETURNING good_qty
+	</select>
+
 </mapper>

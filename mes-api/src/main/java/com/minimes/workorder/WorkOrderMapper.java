@@ -22,4 +22,7 @@ public interface WorkOrderMapper {
 
 	void updateStatus(@Param("woId") long woId, @Param("status") WorkOrderStatus status);
 
+	/** 양품·불량 수량을 더하고, 더한 뒤의 누적 양품 수량을 돌려준다 */
+	int addResultQty(@Param("woId") long woId, @Param("goodQty") int goodQty, @Param("defectQty") int defectQty);
+
 }
