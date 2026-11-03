@@ -16,9 +16,23 @@
 		  FROM production_result WHERE wo_id = #{woId} ORDER BY result_id
 	</select>
 
-	<!-- 레거시와 같은 MAX + 1 채번. 동시 보고가 오면 같은 번호가 나와 늦은 쪽이 중복 키로 실패한다 (레거시 문제점 4) -->
-	<select id="nextLotSeq" resultType="int">
-		SELECT COALESCE(MAX(CAST(RIGHT(lot_no, 4) AS INT)), 0) + 1 FROM lot WHERE lot_no LIKE #{prefix} || '%'
+	<!--
+		LOT 순번 채번 (트러블 슈팅 1). 레거시의 MAX + 1은 동시 보고 때 같은 번호를 내서 늦은 쪽이 중복 키로 실패했다.
+
+		lot_seq 행을 INSERT ... ON CONFLICT DO UPDATE로 갱신한다. 갱신한 행은 커밋할 때까지 잠겨 있으므로,
+		같은 공장·근무일자의 다른 보고는 이 줄에서 기다렸다가 커밋된 다음 번호를 받는다.
+
+		GREATEST의 두 번째 값(LOT 테이블의 MAX + 1)은 전환 기간용이다. C# 레거시는 아직 lot_seq를 모르고 MAX + 1로
+		LOT을 만들기 때문에, 그 번호를 건너뛰어야 섞어 써도 겹치지 않는다. 레거시를 걷어내면 지운다.
+		INSERT지만 RETURNING 값을 받으려고 select로 실행하고, 결과가 캐시되지 않게 flushCache를 켠다.
+	-->
+	<select id="nextLotSeq" resultType="int" flushCache="true">
+		INSERT INTO lot_seq AS s (plant_cd, work_date, last_seq)
+		SELECT #{plantCd}, #{workDate}, COALESCE(MAX(CAST(RIGHT(lot_no, 4) AS INT)), 0) + 1
+		  FROM lot WHERE lot_no LIKE #{prefix} || '%'
+		ON CONFLICT (plant_cd, work_date) DO UPDATE
+		   SET last_seq = GREATEST(s.last_seq + 1, EXCLUDED.last_seq)
+		RETURNING last_seq
 	</select>
 
 	<insert id="insertLot">

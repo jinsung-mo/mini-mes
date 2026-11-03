@@ -87,7 +87,8 @@ public class ProductionService {
 		if (goodQty > 0) {
 			// 채번: L-{공장}-{근무일자}-{순번4}
 			String prefix = "L-" + workOrder.plantCd() + "-" + shift.workDate().format(LOT_NO_DATE) + "-";
-			lotNo = prefix + String.format("%04d", productionMapper.nextLotSeq(prefix));
+			int seq = productionMapper.nextLotSeq(workOrder.plantCd(), shift.workDate(), prefix);
+			lotNo = prefix + String.format("%04d", seq);
 			productionMapper.insertLot(lotNo, workOrder.plantCd(), workOrder.woId(), workOrder.itemCd(), goodQty);
 		}
 

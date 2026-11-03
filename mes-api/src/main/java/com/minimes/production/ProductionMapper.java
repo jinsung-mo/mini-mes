@@ -14,7 +14,9 @@ public interface ProductionMapper {
 
 	List<ProductionResult> findResults(long woId);
 
-	int nextLotSeq(String prefix);
+	/** 공장·근무일자별 다음 LOT 순번. 호출한 트랜잭션이 끝날 때까지 그 공장·근무일자의 채번을 잠근다 */
+	int nextLotSeq(@Param("plantCd") String plantCd, @Param("workDate") LocalDate workDate,
+			@Param("prefix") String prefix);
 
 	void insertLot(@Param("lotNo") String lotNo, @Param("plantCd") String plantCd, @Param("woId") long woId,
 			@Param("itemCd") String itemCd, @Param("qty") int qty);
