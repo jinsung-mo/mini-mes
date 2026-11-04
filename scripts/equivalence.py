@@ -47,10 +47,11 @@ JAVA_PROJECT = ROOT / "mes-api"
 DB_CONTAINER = "mini-mes-postgres"
 DB_PORT = 55432
 
-# 서버 시계로 채우는 값. 두 WAS가 몇 ms 차이로 처리해서 똑같을 수 없으므로 5초 안이면 같다고 본다.
-# 시간대를 잘못 다루면 몇 시간씩 어긋나고, 다른 상태 전이에서 채우면 한쪽만 값이 있어서 이 허용 범위로는 가려지지 않는다.
+# 서버 시계로 채우는 값. 두 WAS가 몇 ms 차이로 처리하고 응답은 초 단위라 똑같을 수 없으므로, 2초 안이면 같다고 본다.
+# 시간대를 잘못 다루면 몇 시간씩 어긋나고, 다른 상태 전이에서 채우면 한쪽만 값이 있어서 이 허용 범위에 가려지지 않는다.
+# 시각을 안 바꾸는 실수(updated_at 누락)는 단계 사이가 2초보다 짧으면 가려지므로, 시나리오가 그런 단계 앞에서 3초 쉰다.
 TIME_FIELDS = {"started_at", "completed_at", "created_at", "updated_at", "reported_at"}
-TIME_TOLERANCE = datetime.timedelta(seconds=5)
+TIME_TOLERANCE = datetime.timedelta(seconds=2)
 
 SAME, KNOWN, DIFFERENT, UNEXPECTED = "같음", "의도한 차이", "다름", "기대와 다름"
 KINDS = (SAME, KNOWN, DIFFERENT, UNEXPECTED)
@@ -345,6 +346,9 @@ def run_steps(steps):
     variables = {LEGACY.key: {}, JAVA.key: {}}
     results = []
     for step in steps:
+        if isinstance(step, scenario.Pause):
+            time.sleep(step.seconds)
+            continue
         # 같은 요청을 C# → Java 순서로 바로 이어서 보낸다. 서버 시각이 들어가는 값도 몇 ms 차이로 맞춰진다
         legacy = send(LEGACY, step, variables[LEGACY.key])
         java = send(JAVA, step, variables[JAVA.key])

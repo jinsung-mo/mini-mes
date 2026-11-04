@@ -39,6 +39,14 @@ class Step:
     known: tuple | None = None    # (의도한 차이 ID, Java의 결과): 레거시와 일부러 다르게 만든 요청
 
 
+@dataclass
+class Pause:
+    """다음 요청을 보내기 전에 쉰다. 서버 시각이 들어가는 값을 2초까지 같다고 보는 비교 규칙 때문에,
+    시각을 바꿔야 하는 단계 사이가 너무 짧으면 '시각을 안 바꾸는' 실수가 가려진다. 그런 단계 앞에서 그보다 길게 쉰다."""
+    seconds: float
+    reason: str
+
+
 @dataclass(frozen=True)
 class KnownDifference:
     title: str
@@ -137,6 +145,9 @@ class Scenario:
     def call(self, method, name, path, expect="0000", **options):
         self.steps.append(Step(self._section, name, method, path, expect=expect, **options))
 
+    def pause(self, seconds, reason):
+        self.steps.append(Pause(seconds, reason))
+
 
 def steps():
     s = Scenario()
@@ -224,6 +235,7 @@ def steps():
     s.get("LOT: 없는 작업지시면 빈 목록", "/api/work-orders/99999999/lots")
     s.get("실적: 없는 작업지시면 빈 목록", "/api/work-orders/99999999/results")
 
+    s.pause(3, "작업지시를 만든 시각(created_at)과 상태를 바꾼 시각(updated_at)이 벌어지게 한다")
     s.section("상태 전이")
     s.post("릴리즈", f"{flow}/release")
     s.post("릴리즈 두 번", f"{flow}/release", expect="E005")
@@ -284,6 +296,7 @@ def steps():
     s.post("보고 시각 2026/11/03 08:00 (없는 작업지시)", RESULTS,
            flow_report(woId=99999999, reportedAt="2026/11/03 08:00"), "E004", known=("reported-at-format", "E001"))
 
+    s.pause(3, "작업을 시작한 시각과 실적을 반영한 시각(updated_at, completed_at)이 벌어지게 한다")
     s.section("실적 보고: 반영")
     # 오프셋이 없는 시각은 서버 시각으로 본다. 근무조 경계(06, 14, 22시)와 자정 넘김을 지나가게 골랐다
     s.post("08:00+09:00", RESULTS, flow_report(reportedAt=f"{DAY}T08:00:00+09:00"))
