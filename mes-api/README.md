@@ -30,7 +30,8 @@ IntelliJ에서는 `mes-api` 폴더를 Gradle 프로젝트로 열고 `MesApiAppli
 
 ```
 com.minimes
-├─ common/       ApiResponse(응답 형식), ErrorCode, BusinessException, GlobalExceptionHandler, LoopbackConfig
+├─ common/       ApiResponse(응답 형식), ErrorCode, BusinessException, GlobalExceptionHandler, LoopbackConfig,
+│                LegacyRequestConfig·LegacyQueryParameterFilter(요청 해석 규칙을 레거시에 맞춤)
 ├─ master/       기준정보 조회
 │  ├─ MasterController   Presentation: HTTP 요청 ↔ 자바 객체
 │  ├─ MasterService      Business: 입력 검증, 업무 규칙
@@ -90,7 +91,7 @@ GET /api/items?plantCd=KR01
 
 ## 레거시(ASP.NET)와 동작을 맞춘 부분
 
-같은 요청을 양쪽에 보내 비교하다가 찾은 차이와, 맞춘 방법입니다.
+같은 요청을 양쪽에 보내 비교하다가 찾은 차이와, 맞춘 방법입니다. 위 5개는 2단계에서 손으로 비교하면서, 아래 5개는 [3단계 동등성 검증](../docs/03-equivalence.md#찾은-차이와-처리)으로 찾았습니다.
 
 | 요청 | ASP.NET (레거시) | Spring 기본 | 맞춘 방법 |
 |---|---|---|---|
@@ -99,6 +100,14 @@ GET /api/items?plantCd=KR01
 | `planQty: 10.5` | 400 | 10으로 잘라서 받음 | `spring.jackson.deserialization.accept-float-as-int: false` |
 | 없는 주소 | 404 | 404 | `GlobalExceptionHandler`가 `ResponseEntityExceptionHandler`를 상속해 E999로 바뀌지 않게 |
 | `?status=FOO` | 빈 목록 | enum으로 받으면 400 | 조회 조건은 문자열로 받음 |
+| `/api/plants/` (끝에 슬래시) | 받음 | 404 (Spring 6부터) | `UrlHandlerFilter`가 슬래시를 떼고 넘김 (`LegacyRequestConfig`) |
+| `/API/Plants` | 받음 | 404 | 주소 매칭에서 대소문자 구분을 끔 (`LegacyRequestConfig`) |
+| `?plantcd=KR01`, `?plantCd=KR01&plantCd=US01` | 이름 대소문자 무시, 첫 값 | 이름 구분, 값을 쉼표로 이어 붙임 | `LegacyQueryParameterFilter` |
+| `"plantCd": 1` (문자열 칸에 숫자·true/false) | 400 | `"1"`로 바꿔 받음 | Jackson 변환(coercion) 설정으로 거절 (`LegacyRequestConfig`) |
+| 본문도 Content-Type도 없는 POST | 415 | 400 | `GlobalExceptionHandler`에서 415 |
+
+HEAD·OPTIONS 요청은 맞추지 않았습니다. 레거시는 405, Java는 200입니다. 데이터를 읽기만 하는 HTTP 표준 동작이라 의도한 차이로 등록했습니다.
+설정이 빠지지 않았는지는 `LegacyRequestConfigTest`가 DB 없이 확인합니다.
 
 응답 DTO는 값을 만들어 내보내기만 하므로 record를 그대로 씁니다.
 
@@ -108,3 +117,4 @@ GET /api/items?plantCd=KR01
 - [x] 작업지시: 목록, 상세, 생성, 상태 전이
 - [x] LOT·실적 조회 (화면의 상세 영역이 작업지시와 함께 불러오므로 먼저 옮김)
 - [x] 실적 보고: LOT 발행, 근무조 계산, 자동 완료 (C#과 같은 요청 33건의 응답·DB 반영 결과가 같음)
+- [x] 동등성 검증: 모든 API를 검증용 DB에서 C#과 비교. 요청 160건 중 같음 156건, 의도한 차이 4건 ([3단계](../docs/03-equivalence.md))
