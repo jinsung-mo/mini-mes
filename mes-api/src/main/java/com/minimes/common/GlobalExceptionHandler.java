@@ -4,8 +4,15 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
@@ -25,6 +32,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	public ApiResponse<Void> handleBusiness(BusinessException e) {
 		return ApiResponse.fail(e.getErrorCode(), e.getMessage());
+	}
+
+	/**
+	 * 본문도 Content-Type도 없는 요청은 레거시처럼 415로 응답한다 (3단계 동등성 검증에서 찾음).
+	 * Spring은 Content-Type을 보기 전에 본문이 없다는 것부터 처리해서 400을 줬다.
+	 * Content-Type이 있는데 본문이 비었거나 JSON이 깨진 경우는 레거시도 400이라 그대로 둔다.
+	 */
+	@Override
+	protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		if (request instanceof ServletWebRequest web && web.getRequest().getContentType() == null) {
+			return handleExceptionInternal(ex, null, headers, HttpStatus.UNSUPPORTED_MEDIA_TYPE, request);
+		}
+		return super.handleHttpMessageNotReadable(ex, headers, status, request);
 	}
 
 	/**

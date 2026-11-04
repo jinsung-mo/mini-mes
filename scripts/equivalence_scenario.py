@@ -71,6 +71,13 @@ KNOWN_DIFFERENCES = {
         reason="동시 보고 때 LOT 번호가 겹치던 문제를 고쳤다. 발행되는 LOT 번호는 같다",
         doc="docs/troubleshooting.md#1-동시-보고-시-lot-번호-중복",
     ),
+    "head-options": KnownDifference(
+        title="HEAD·OPTIONS 요청",
+        legacy="405. GET 주소에 HEAD·OPTIONS를 받지 않음",
+        java="200. Spring MVC가 GET 주소의 HEAD(본문 없는 GET)와 OPTIONS(허용 메서드 안내)를 알아서 처리",
+        reason="데이터를 읽기만 하는 HTTP 표준 동작이다. 레거시에서는 늘 실패하던 요청이라 여기에 기대는 클라이언트가 없다",
+        doc="docs/03-equivalence.md#의도한-차이로-둔-것",
+    ),
 }
 
 
@@ -334,8 +341,8 @@ def steps():
     s.section("HTTP 오류")
     s.get("없는 주소", "/api/nope", "HTTP 404")
     s.get("/api", "/api", "HTTP 404")
-    s.call("HEAD", "HEAD 요청", "/api/plants", "HTTP 405")
-    s.call("OPTIONS", "OPTIONS 요청", "/api/plants", "HTTP 405")
+    s.call("HEAD", "HEAD 요청", "/api/plants", "HTTP 405", known=("head-options", "HTTP 200"))
+    s.call("OPTIONS", "OPTIONS 요청", "/api/plants", "HTTP 405", known=("head-options", "HTTP 200"))
     s.call("DELETE", "작업지시 삭제 (없는 기능)", flow, "HTTP 405")
     s.call("PUT", "실적 PUT", RESULTS, "HTTP 405", body=flow_report())
 
