@@ -99,7 +99,7 @@
 - [x] **2단계: Spring Boot 전환** (API 계약 유지, WAS 내부 계층 분리) — [설명](mes-api/README.md) · [코드](mes-api/)
 - [x] **트러블 슈팅: 동시 실적 보고** (LOT 채번, 완료 후 반영, 오류 메시지 노출, localhost 지연) — [설명](docs/troubleshooting.md)
 - [x] **3단계: 동등성 검증 자동화** (검증용 DB를 나눠 등록·변경까지 C#/Java 비교, 찾은 차이 12건 처리) — [설명](docs/03-equivalence.md) · [코드](scripts/equivalence.py)
-- [ ] 4단계: 설비 TCP 인터페이스 + PLC 시뮬레이터
+- [ ] 4단계: 설비 TCP 인터페이스 + PLC 시뮬레이터 (진행 중: 전문 규격과 해석 코드 완료) — [설명](docs/04-equipment-interface.md)
 - [ ] 5단계: 해외 공장 시간대 처리 (레거시 버그 수정)
 - [ ] 6단계: SQL 튜닝
 - [ ] 7단계: CI/CD, 컨테이너 배포
