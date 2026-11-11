@@ -102,6 +102,16 @@ public class WorkOrderService {
 	}
 
 	/**
+	 * {@link #getWorkOrderForUpdate}와 같지만, 없으면 E004 대신 null을 돌려준다.
+	 * 설비 전문의 중복 확인처럼 업무 검증(E001 → E002 → E004 순서)보다 먼저 잠가야 하는 곳에서 쓴다.
+	 * 여기서 E004를 던지면 REST와 검증 순서가 달라진다.
+	 */
+	@Transactional(propagation = Propagation.MANDATORY)
+	public WorkOrder findWorkOrderForUpdate(long woId) {
+		return workOrderMapper.findByIdForUpdate(woId);
+	}
+
+	/**
 	 * 생산실적을 작업지시에 반영한다. 누적 양품이 계획 수량에 닿으면 자동 완료한다.
 	 * 실적 저장과 같은 트랜잭션 안에서, {@link #getWorkOrderForUpdate}로 잠근 작업지시로 불러야 한다.
 	 */

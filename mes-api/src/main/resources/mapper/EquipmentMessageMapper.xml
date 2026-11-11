@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.minimes.equipment.EquipmentMessageMapper">
+
+	<select id="find" resultType="com.minimes.equipment.EquipmentMessageMapper$ProcessedMessage">
+		SELECT request_body, ack_body
+		  FROM equipment_message
+		 WHERE wo_id = #{woId} AND eqp_cd = #{eqpCd} AND message_id = #{messageId}
+	</select>
+
+	<insert id="insert">
+		INSERT INTO equipment_message (wo_id, eqp_cd, message_id, result_id, request_body, ack_body)
+		VALUES (#{woId}, #{eqpCd}, #{messageId}, #{resultId}, #{requestBody}, #{ackBody})
+	</insert>
+
+</mapper>

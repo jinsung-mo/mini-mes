@@ -32,6 +32,20 @@ tasks.withType(JavaCompile).configureEach {
 	options.encoding = 'UTF-8'
 }
 
+// DB 컨테이너가 필요한 테스트(@Tag("db"))는 기본 test에서 빼고 dbTest로 따로 돌린다.
+// 테스트용 DB를 새로 만들어 쓰므로 개발 DB의 데이터는 바뀌지 않는다.
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags 'db'
+	}
+}
+
+tasks.register('dbTest', Test) {
+	description = 'DB 컨테이너(localhost:55432)가 필요한 테스트를 실행한다.'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'db'
+	}
 }

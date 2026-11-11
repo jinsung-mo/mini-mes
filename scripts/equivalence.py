@@ -170,8 +170,9 @@ def start_java():
         raise SetupError("mes-api/build/libs에 jar가 없습니다. --no-build 없이 실행해서 먼저 빌드하세요.")
     jar = max(jars, key=lambda p: p.stat().st_mtime)
     java = Path(os.environ["JAVA_HOME"]) / "bin" / "java" if os.environ.get("JAVA_HOME") else "java"
-    # application.yml을 그대로 쓰고, 포트와 DB만 명령줄 설정으로 덮어쓴다
-    start(JAVA, [java, "-jar", jar, f"--server.port={JAVA.port}",
+    # application.yml을 그대로 쓰고, 포트와 DB만 명령줄 설정으로 덮어쓴다.
+    # 설비 게이트웨이(4단계)는 비교 대상이 아니므로 빈 포트(0)로 열어서 개발 서버의 9101과 겹치지 않게 한다
+    start(JAVA, [java, "-jar", jar, f"--server.port={JAVA.port}", "--mes.equipment.port=0",
                  f"--spring.datasource.url=jdbc:postgresql://localhost:{DB_PORT}/{JAVA.db}"], JAVA_PROJECT)
 
 

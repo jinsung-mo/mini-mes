@@ -16,6 +16,14 @@ spring:
     deserialization:
       accept-float-as-int: false                 # 10.5를 int로 잘라 받지 않고 400으로 거절한다
 
+# 설비 TCP 게이트웨이 (4단계). 전문 규격은 docs/04-equipment-interface.md
+mes:
+  equipment:
+    port: 9101
+    bind-address: 127.0.0.1    # WAS처럼 루프백에서만 받는다
+    read-timeout: 30s          # 이 시간 동안 아무것도 오지 않으면 연결을 닫는다. 설비는 10초마다 HBT를 보낸다
+    max-connections: 50
+
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   configuration:
