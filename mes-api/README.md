@@ -39,11 +39,20 @@ com.minimes
 │  └─ Plant, Item, ...   응답 DTO (record, JSON 키는 snake_case)
 ├─ workorder/    작업지시: 목록·상세·생성·상태 전이
 │  └─ WorkOrderStatus    상태와 전이 규칙(CREATED → RELEASED → IN_PROGRESS → COMPLETED)
-└─ production/   LOT·생산실적 (주소는 /api/work-orders/{id}/lots 지만 다루는 데이터 기준으로 분리)
-   ├─ ProductionService.report   실적 보고. 하나의 트랜잭션(@Transactional)
-   ├─ WorkShift                  근무조·근무일자 계산 (DB 없이 테스트)
-   └─ ReportedAtParser           보고 시각 해석 (레거시 DateTime.TryParse와 같은 규칙)
+├─ production/   LOT·생산실적 (주소는 /api/work-orders/{id}/lots 지만 다루는 데이터 기준으로 분리)
+│  ├─ ProductionService.report   실적 보고. 하나의 트랜잭션(@Transactional)
+│  ├─ WorkShift                  근무조·근무일자 계산 (DB 없이 테스트)
+│  └─ ReportedAtParser           보고 시각 해석 (레거시 DateTime.TryParse와 같은 규칙)
+└─ equipment/    설비 TCP 인터페이스 (4단계, 레거시에는 없는 새 인터페이스)
+   ├─ protocol/                  전문 형식: Frame, FrameEncoder, FrameDecoder(뭉침·쪼개짐·재동기화), MessageBody
+   ├─ EquipmentGateway           TCP 리스너(:9101). 소켓과 전문 경계만 다룸
+   ├─ EquipmentFrameHandler      전문 종류별 처리. REST의 Controller + 예외 처리기 자리
+   └─ EquipmentResultService     잠금 → 재전송 확인 → ProductionService.report → 기록 (한 트랜잭션)
 ```
+
+설비가 보낸 실적도 REST와 같은 `ProductionService.report`를 거칩니다. 전문 규격과 설계 이유는 [4단계 문서](../docs/04-equipment-interface.md)에 있습니다.
+
+테스트: `./gradlew test`(DB 없이), `./gradlew dbTest`(DB 컨테이너 필요, 테스트용 DB를 새로 만들어 씀).
 
 ### 실적 보고: 기능 경계를 넘는 요청
 

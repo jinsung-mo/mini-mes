@@ -99,7 +99,7 @@
 - [x] **2단계: Spring Boot 전환** (API 계약 유지, WAS 내부 계층 분리) — [설명](mes-api/README.md) · [코드](mes-api/)
 - [x] **트러블 슈팅: 동시 실적 보고** (LOT 채번, 완료 후 반영, 오류 메시지 노출, localhost 지연) — [설명](docs/troubleshooting.md)
 - [x] **3단계: 동등성 검증 자동화** (검증용 DB를 나눠 등록·변경까지 C#/Java 비교, 찾은 차이 12건 처리) — [설명](docs/03-equivalence.md) · [코드](scripts/equivalence.py)
-- [ ] 4단계: 설비 TCP 인터페이스 + PLC 시뮬레이터 (진행 중: 전문 규격과 해석 코드 완료) — [설명](docs/04-equipment-interface.md)
+- [ ] 4단계: 설비 TCP 인터페이스 + PLC 시뮬레이터 (진행 중: 전문 규격, TCP 게이트웨이, 재전송 중복 반영 막기 완료) — [설명](docs/04-equipment-interface.md)
 - [ ] 5단계: 해외 공장 시간대 처리 (레거시 버그 수정)
 - [ ] 6단계: SQL 튜닝
 - [ ] 7단계: CI/CD, 컨테이너 배포
@@ -109,17 +109,18 @@
 ```bash
 docker compose up -d                          # PostgreSQL(:55432) + nginx 화면(:3000)
 cd legacy-csharp/LegacyMes && dotnet run      # C# 레거시 WAS(:5080)
-cd mes-api && ./gradlew bootRun               # Java WAS(:8081)
+cd mes-api && ./gradlew bootRun               # Java WAS(:8081) + 설비 TCP 게이트웨이(:9101)
 python scripts/report_race.py                 # 동시 실적 보고 재현 (C#과 Java 비교)
 python scripts/equivalence.py                 # 동등성 검증. 검증용 WAS·DB를 따로 띄우므로 DB만 있으면 됨
 ```
 
 브라우저에서 http://localhost:3000 을 엽니다. 모듈별 자세한 내용은 각 폴더의 README를 참고하세요.
 
-이미 만들어 둔 DB 볼륨이 있으면 LOT 채번 테이블을 한 번 적용합니다. 새로 만드는 DB에는 자동으로 들어갑니다.
+이미 만들어 둔 DB 볼륨이 있으면 나중에 추가된 테이블(LOT 채번, 설비 전문 기록)을 한 번 적용합니다. 새로 만드는 DB에는 자동으로 들어갑니다.
 
 ```bash
 docker exec -i mini-mes-postgres psql -U mes -d mes < db/init/03_lot_seq.sql
+docker exec -i mini-mes-postgres psql -U mes -d mes < db/init/04_equipment_message.sql
 ```
 
 ## 기술 스택
