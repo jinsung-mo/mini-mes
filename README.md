@@ -49,7 +49,7 @@
 | [`legacy-csharp/`](legacy-csharp/) | WAS tier: 전환 대상 C# 레거시 |
 | [`mes-api/`](mes-api/) | WAS tier: 전환 결과 Java |
 | [`db/`](db/) | DB tier: 스키마, 기초 데이터 |
-| [`scripts/`](scripts/) | C#/Java 동등성 검증, 동시 실적 보고 재현 |
+| [`scripts/`](scripts/) | C#/Java 동등성 검증, 동시 실적 보고 재현, 가짜 PLC와 설비 장애 시나리오 |
 
 ## 가장 중요한 설계: WAS를 바꿔도 화면과 DB는 모르게 한다
 
@@ -70,7 +70,7 @@
 | 1 | 동시 실적 보고 시 LOT 번호가 겹쳐 실적이 사라짐 | 채번 테이블 + 행 잠금 | 40건 중 성공 2~14건 → 40건 |
 | 2 | 완료된 작업지시에 실적이 계속 반영됨 | 작업지시 행 잠금 (`FOR UPDATE`) | 계획 10에 양품 18~30 → 10 |
 | 3 | 오류 응답에 서버 파일 경로와 SQL이 노출됨 | 참조 번호만 응답, 상세는 서버 로그 | 노출 제거 |
-| 4 | `localhost`로 부르면 Java만 요청마다 2초 지연 | IPv6 루프백 커넥터 추가 | 2,030ms → 4ms |
+| 4 | `localhost`로 부르면 Java만 요청마다 2초 지연 | IPv6 루프백 커넥터 추가 (4단계 설비 게이트웨이도 같은 방법) | 2,030ms → 4ms |
 | 5 | 주소·파라미터 표기가 조금 다르면 Java만 404·E001 | 요청 해석 규칙을 레거시(ASP.NET)에 맞춤 | 차이 12건 → 의도한 차이 2건 |
 | 6 | 동등성 검증이 `updated_at` 누락을 놓침 | 시각 허용 범위 축소 + 단계 사이 대기 | 일부러 넣은 실수 5가지 중 4가지 잡음 |
 
@@ -99,7 +99,7 @@
 - [x] **2단계: Spring Boot 전환** (API 계약 유지, WAS 내부 계층 분리) — [설명](mes-api/README.md) · [코드](mes-api/)
 - [x] **트러블 슈팅: 동시 실적 보고** (LOT 채번, 완료 후 반영, 오류 메시지 노출, localhost 지연) — [설명](docs/troubleshooting.md)
 - [x] **3단계: 동등성 검증 자동화** (검증용 DB를 나눠 등록·변경까지 C#/Java 비교, 찾은 차이 12건 처리) — [설명](docs/03-equivalence.md) · [코드](scripts/equivalence.py)
-- [ ] 4단계: 설비 TCP 인터페이스 + PLC 시뮬레이터 (진행 중: 전문 규격, TCP 게이트웨이, 재전송 중복 반영 막기 완료) — [설명](docs/04-equipment-interface.md)
+- [x] **4단계: 설비 TCP 인터페이스 + PLC 시뮬레이터** (전문 규격, TCP 게이트웨이, 재전송 중복 반영 막기, WAS 강제 종료를 포함한 장애 시나리오 5개) — [설명](docs/04-equipment-interface.md) · [코드](mes-api/src/main/java/com/minimes/equipment/)
 - [ ] 5단계: 해외 공장 시간대 처리 (레거시 버그 수정)
 - [ ] 6단계: SQL 튜닝
 - [ ] 7단계: CI/CD, 컨테이너 배포
@@ -112,6 +112,8 @@ cd legacy-csharp/LegacyMes && dotnet run      # C# 레거시 WAS(:5080)
 cd mes-api && ./gradlew bootRun               # Java WAS(:8081) + 설비 TCP 게이트웨이(:9101)
 python scripts/report_race.py                 # 동시 실적 보고 재현 (C#과 Java 비교)
 python scripts/equivalence.py                 # 동등성 검증. 검증용 WAS·DB를 따로 띄우므로 DB만 있으면 됨
+python scripts/plc_simulator.py --wo <작업지시 ID> --count 10   # 가짜 PLC가 게이트웨이(:9101)로 실적 전송
+python scripts/equipment_scenarios.py         # 설비 장애 시나리오. 시나리오용 WAS·DB를 따로 띄움
 ```
 
 브라우저에서 http://localhost:3000 을 엽니다. 모듈별 자세한 내용은 각 폴더의 README를 참고하세요.

@@ -45,7 +45,7 @@ com.minimes
 │  └─ ReportedAtParser           보고 시각 해석 (레거시 DateTime.TryParse와 같은 규칙)
 └─ equipment/    설비 TCP 인터페이스 (4단계, 레거시에는 없는 새 인터페이스)
    ├─ protocol/                  전문 형식: Frame, FrameEncoder, FrameDecoder(뭉침·쪼개짐·재동기화), MessageBody
-   ├─ EquipmentGateway           TCP 리스너(:9101). 소켓과 전문 경계만 다룸
+   ├─ EquipmentGateway           TCP 리스너(127.0.0.1·::1 :9101). 소켓과 전문 경계만 다룸
    ├─ EquipmentFrameHandler      전문 종류별 처리. REST의 Controller + 예외 처리기 자리
    └─ EquipmentResultService     잠금 → 재전송 확인 → ProductionService.report → 기록 (한 트랜잭션)
 ```
