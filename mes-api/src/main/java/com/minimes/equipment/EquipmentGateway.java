@@ -5,11 +5,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
@@ -36,7 +40,7 @@ import com.minimes.equipment.protocol.FrameEncoder;
  * <p>
  * 스레드 구조:
  * <ul>
- * <li>accept 스레드 하나: {@code accept()}는 새 연결이 올 때까지 멈추므로 따로 둔다</li>
+ * <li>받는 주소마다 accept 스레드 하나: {@code accept()}는 새 연결이 올 때까지 멈추므로 따로 둔다</li>
  * <li>연결마다 스레드 하나: {@code read()}도 데이터가 올 때까지 멈춘다. 이 스레드가 자기 연결의
  * {@link FrameDecoder}를 가진다 (디코더는 상태가 있어서 공유하면 안 됨)</li>
  * <li>한 연결 안에서는 받은 순서대로 하나씩 처리하고 응답한다. 같은 설비의 실적 순서가 바뀌지 않는다</li>
@@ -46,6 +50,9 @@ import com.minimes.equipment.protocol.FrameEncoder;
  * 연결이 수천 개면 연결마다 스레드를 두는 방식은 맞지 않는다. 그때는 적은 스레드로 많은 연결을 다루는 NIO(Netty)를 쓴다.
  * <p>
  * Spring이 시작할 때 열고, 종료할 때 닫는다({@link SmartLifecycle}). 포트를 열 수 없으면 WAS 시작이 실패한다.
+ * <p>
+ * 받는 주소는 127.0.0.1과 ::1이다. localhost로 접속하는 설비는 ::1을 먼저 시도하는데, ::1에서 받지 않으면 Windows에서
+ * 연결 거부를 확인하느라 접속마다 약 2초가 걸린다 (WAS의 트러블 슈팅 4와 같은 원인, ③에서 2,060ms로 측정).
  */
 @Component
 public class EquipmentGateway implements SmartLifecycle {
@@ -57,9 +64,9 @@ public class EquipmentGateway implements SmartLifecycle {
 
 	private final Set<Socket> connections = ConcurrentHashMap.newKeySet();
 	private volatile boolean running;
-	private ServerSocket serverSocket;
+	private final List<ServerSocket> serverSockets = new ArrayList<>();
+	private final List<Thread> acceptThreads = new ArrayList<>();
 	private ThreadPoolExecutor connectionPool;
-	private Thread acceptThread;
 
 	public EquipmentGateway(EquipmentProperties properties, FrameHandler handler) {
 		this.properties = properties;
@@ -68,34 +75,57 @@ public class EquipmentGateway implements SmartLifecycle {
 
 	@Override
 	public void start() {
-		try {
-			serverSocket = new ServerSocket();
-			serverSocket.bind(new InetSocketAddress(properties.bindAddress(), properties.port()));
+		int port = properties.port();
+		List<String> opened = new ArrayList<>();
+		for (String address : properties.bindAddresses()) {
+			try {
+				InetAddress inet = InetAddress.getByName(address);
+				if (!inet.isAnyLocalAddress() && NetworkInterface.getByInetAddress(inet) == null) {
+					log.info("이 PC에 {} 주소가 없어서 열지 않음", address); // IPv6를 끈 PC의 ::1
+					continue;
+				}
+				ServerSocket serverSocket = new ServerSocket();
+				serverSockets.add(serverSocket);
+				serverSocket.bind(new InetSocketAddress(inet, port));
+				port = serverSocket.getLocalPort(); // 설정이 0이면 첫 주소에서 OS가 고른 포트를 나머지 주소에도 쓴다
+				opened.add(address);
+			}
+			catch (IOException e) {
+				serverSockets.forEach(EquipmentGateway::closeQuietly);
+				serverSockets.clear();
+				throw new UncheckedIOException("설비 게이트웨이 포트를 열 수 없음: " + address + ":" + port, e);
+			}
 		}
-		catch (IOException e) {
-			throw new UncheckedIOException("설비 게이트웨이 포트를 열 수 없음: " + properties.port(), e);
+		if (serverSockets.isEmpty()) {
+			throw new IllegalStateException("설비 게이트웨이가 받을 주소가 없음: " + properties.bindAddresses());
 		}
 		// 대기열 없이(SynchronousQueue) 최대 개수까지만 스레드를 만든다. 넘치면 RejectedExecutionException
 		AtomicInteger threadNo = new AtomicInteger();
 		connectionPool = new ThreadPoolExecutor(0, properties.maxConnections(), 60, TimeUnit.SECONDS,
 				new SynchronousQueue<>(), task -> new Thread(task, "equipment-conn-" + threadNo.incrementAndGet()));
 		running = true;
-		acceptThread = new Thread(this::acceptLoop, "equipment-accept");
-		acceptThread.start();
-		log.info("설비 게이트웨이 시작 {}:{}", properties.bindAddress(), getPort());
+		for (ServerSocket serverSocket : serverSockets) {
+			Thread acceptThread = new Thread(() -> acceptLoop(serverSocket),
+					"equipment-accept-" + serverSocket.getInetAddress().getHostAddress());
+			acceptThreads.add(acceptThread);
+			acceptThread.start();
+		}
+		log.info("설비 게이트웨이 시작 {} 포트 {}", opened, port);
 	}
 
 	@Override
 	public void stop() {
 		running = false;
-		closeQuietly(serverSocket); // accept()가 SocketException으로 깨어나 accept 스레드가 끝난다
+		serverSockets.forEach(EquipmentGateway::closeQuietly); // accept()가 SocketException으로 깨어나 accept 스레드가 끝난다
 		connections.forEach(EquipmentGateway::closeQuietly); // read()도 같은 방식으로 깨운다
 		connectionPool.shutdown();
 		try {
 			if (!connectionPool.awaitTermination(5, TimeUnit.SECONDS)) {
 				log.warn("설비 연결 스레드가 5초 안에 끝나지 않음");
 			}
-			acceptThread.join(5000);
+			for (Thread acceptThread : acceptThreads) {
+				acceptThread.join(5000);
+			}
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -110,10 +140,10 @@ public class EquipmentGateway implements SmartLifecycle {
 
 	/** 실제로 연 포트. 설정이 0이면 OS가 고른 포트 */
 	public int getPort() {
-		return serverSocket.getLocalPort();
+		return serverSockets.get(0).getLocalPort();
 	}
 
-	private void acceptLoop() {
+	private void acceptLoop(ServerSocket serverSocket) {
 		while (running) {
 			Socket socket;
 			try {

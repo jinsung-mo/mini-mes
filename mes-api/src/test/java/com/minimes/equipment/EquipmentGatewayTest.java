@@ -3,8 +3,11 @@ package com.minimes.equipment;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -34,7 +37,7 @@ class EquipmentGatewayTest {
 	}
 
 	private int start(FrameHandler handler, int maxConnections) {
-		gateway = new EquipmentGateway(new EquipmentProperties(0, "127.0.0.1", READ_TIMEOUT, maxConnections), handler);
+		gateway = new EquipmentGateway(new EquipmentProperties(0, List.of("127.0.0.1"), READ_TIMEOUT, maxConnections), handler);
 		gateway.start();
 		return gateway.getPort();
 	}
@@ -145,6 +148,20 @@ class EquipmentGatewayTest {
 			assertEquals(Frame.ACK, client.request(new Frame(Frame.HEARTBEAT, "H1", "")).type());
 			gateway.stop();
 			assertTrue(client.closedByServer());
+		}
+	}
+
+	@Test
+	void IPv4와_IPv6_루프백에서_같은_포트로_받는다() throws Exception {
+		assumeTrue(NetworkInterface.getByInetAddress(InetAddress.getByName("::1")) != null, "IPv6를 끈 PC");
+		gateway = new EquipmentGateway(new EquipmentProperties(0, List.of("127.0.0.1", "::1"), READ_TIMEOUT, 2),
+				request -> new Frame(Frame.ACK, request.messageId(), request.body()));
+		gateway.start();
+		int port = gateway.getPort();
+		for (String host : List.of("127.0.0.1", "::1")) {
+			try (EquipmentClient client = new EquipmentClient(host, port, Duration.ofSeconds(5))) {
+				assertEquals(new Frame(Frame.ACK, "M1", host), client.request(new Frame(Frame.RESULT, "M1", host)), host);
+			}
 		}
 	}
 

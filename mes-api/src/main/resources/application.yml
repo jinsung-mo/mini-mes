@@ -20,7 +20,10 @@ spring:
 mes:
   equipment:
     port: 9101
-    bind-address: 127.0.0.1    # WAS처럼 루프백에서만 받는다
+    # WAS처럼 루프백에서만 받는다. ::1은 localhost로 접속하는 설비가 접속마다 2초씩 기다리지 않게 연다 (트러블 슈팅 4)
+    bind-addresses:
+      - 127.0.0.1
+      - "::1"
     read-timeout: 30s          # 이 시간 동안 아무것도 오지 않으면 연결을 닫는다. 설비는 10초마다 HBT를 보낸다
     max-connections: 50
 
